@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
-	"github.com/garyburd/redigo/redis"
 	"time"
 )
 
@@ -13,30 +12,27 @@ func EnqueueSpec(c gospec.Context) {
 	Config.Namespace = "prod:"
 
 	c.Specify("Enqueue", func() {
-		conn := Config.Pool.Get()
-		defer conn.Close()
-
 		c.Specify("makes the queue available", func() {
 			Enqueue("enqueue1", "Add", []int{1, 2})
 
-			found, _ := redis.Bool(conn.Do("sismember", "prod:queues", "enqueue1"))
+			found, _ := Config.Cluster.Cmd("sismember", "prod:queues", "{enqueue1}").Bool()
 			c.Expect(found, IsTrue)
 		})
 
 		c.Specify("adds a job to the queue", func() {
-			nb, _ := redis.Int(conn.Do("llen", "prod:queue:enqueue2"))
+			nb, _ := Config.Cluster.Cmd("llen", "prod:queue:{enqueue2}").Int()
 			c.Expect(nb, Equals, 0)
 
 			Enqueue("enqueue2", "Add", []int{1, 2})
 
-			nb, _ = redis.Int(conn.Do("llen", "prod:queue:enqueue2"))
+			nb, _ = Config.Cluster.Cmd("llen", "prod:queue:{enqueue2}").Int()
 			c.Expect(nb, Equals, 1)
 		})
 
 		c.Specify("saves the arguments", func() {
 			Enqueue("enqueue3", "Compare", []string{"foo", "bar"})
 
-			bytes, _ := redis.Bytes(conn.Do("lpop", "prod:queue:enqueue3"))
+			bytes, _ := Config.Cluster.Cmd("lpop", "prod:queue:{enqueue3}").Bytes()
 			var result map[string]interface{}
 			json.Unmarshal(bytes, &result)
 			c.Expect(result["class"], Equals, "Compare")
@@ -50,7 +46,7 @@ func EnqueueSpec(c gospec.Context) {
 		c.Specify("has a jid", func() {
 			Enqueue("enqueue4", "Compare", []string{"foo", "bar"})
 
-			bytes, _ := redis.Bytes(conn.Do("lpop", "prod:queue:enqueue4"))
+			bytes, _ := Config.Cluster.Cmd("lpop", "prod:queue:{enqueue4}").Bytes()
 			var result map[string]interface{}
 			json.Unmarshal(bytes, &result)
 			c.Expect(result["class"], Equals, "Compare")
@@ -62,7 +58,7 @@ func EnqueueSpec(c gospec.Context) {
 		c.Specify("has enqueued_at that is close to now", func() {
 			Enqueue("enqueue5", "Compare", []string{"foo", "bar"})
 
-			bytes, _ := redis.Bytes(conn.Do("lpop", "prod:queue:enqueue5"))
+			bytes, _ := Config.Cluster.Cmd("lpop", "prod:queue:{enqueue5}").Bytes()
 			var result map[string]interface{}
 			json.Unmarshal(bytes, &result)
 			c.Expect(result["class"], Equals, "Compare")
@@ -75,7 +71,7 @@ func EnqueueSpec(c gospec.Context) {
 		c.Specify("has retry and retry_count when set", func() {
 			EnqueueWithOptions("enqueue6", "Compare", []string{"foo", "bar"}, EnqueueOptions{RetryCount: 13, Retry: true})
 
-			bytes, _ := redis.Bytes(conn.Do("lpop", "prod:queue:enqueue6"))
+			bytes, _ := Config.Cluster.Cmd("lpop", "prod:queue:{enqueue6}").Bytes()
 			var result map[string]interface{}
 			json.Unmarshal(bytes, &result)
 			c.Expect(result["class"], Equals, "Compare")

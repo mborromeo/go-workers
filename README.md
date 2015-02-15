@@ -1,7 +1,7 @@
-[![Build Status](https://travis-ci.org/jrallison/go-workers.png)](https://travis-ci.org/jrallison/go-workers)
-[![GoDoc](https://godoc.org/github.com/jrallison/go-workers?status.png)](https://godoc.org/github.com/jrallison/go-workers)
+This fork of the original [go-workers](https://github.com/jrallison/go-workers) brings [Redis Cluster](http://redis.io/topics/cluster-spec) support to [goworker](http://www.goworker.org/).
+All the original functionalities are supported, except PASSWORD and SELECT (database number) commands.
 
-[Sidekiq](http://sidekiq.org/) compatible
+(Probably not anymore) [Sidekiq](http://sidekiq.org/) compatible
 background workers in [golang](http://golang.org/).
 
 * reliable queueing for all queues using [brpoplpush](http://redis.io/commands/brpoplpush)
@@ -18,7 +18,7 @@ Example usage:
 package main
 
 import (
-	"github.com/jrallison/go-workers"
+	"github.com/mborromeo/go-workers"
 )
 
 func myJob(message *workers.Msg) {
@@ -39,8 +39,8 @@ func (r *myMiddleware) Call(queue string, message *workers.Msg, next func() bool
 func main() {
   workers.Configure(map[string]string{
     // location of redis instance
-    "server":  "localhost:6379",
-    // instance of the database
+    "server":  "localhost:7000",
+    // instance of the database (still not supported)
     "database":  "0",
     // number of connections to keep open with redis
     "pool":    "30",

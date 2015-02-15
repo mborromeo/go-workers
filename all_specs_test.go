@@ -1,8 +1,10 @@
 package workers
 
 import (
+	"github.com/fzzy/radix/redis"
 	"github.com/customerio/gospec"
 	"testing"
+	"strconv"
 )
 
 // You will need to list every spec in a TestXxx method like this,
@@ -18,15 +20,17 @@ func TestAllSpecs(t *testing.T) {
 
 	r.BeforeEach = func() {
 		Configure(map[string]string{
-			"server":   "localhost:6379",
+			"server":   "localhost:7000",
 			"process":  "1",
 			"database": "15",
 			"pool":     "1",
 		})
 
-		conn := Config.Pool.Get()
-		conn.Do("flushdb")
-		conn.Close()
+		for port := 7000; port <= 7002; port++ {
+			c, _ := redis.Dial("tcp", "localhost:"+strconv.Itoa(port))
+			c.Cmd("flushdb")
+			c.Close()
+        }
 	}
 
 	// List all specs here

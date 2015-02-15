@@ -3,7 +3,6 @@ package workers
 import (
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
-	"github.com/garyburd/redigo/redis"
 	"time"
 )
 
@@ -21,19 +20,16 @@ func MiddlewareStatsSpec(c gospec.Context) {
 	Config.Namespace = "prod:"
 
 	c.Specify("increments processed stats", func() {
-		conn := Config.Pool.Get()
-		defer conn.Close()
-
-		count, _ := redis.Int(conn.Do("get", "prod:stat:processed"))
-		dayCount, _ := redis.Int(conn.Do("get", "prod:stat:processed:"+time.Now().UTC().Format(layout)))
+		count, _ := Config.Cluster.Cmd("get", "prod:stat:processed").Int()
+		dayCount, _ := Config.Cluster.Cmd("get", "prod:stat:processed:"+time.Now().UTC().Format(layout)).Int()
 
 		c.Expect(count, Equals, 0)
 		c.Expect(dayCount, Equals, 0)
 
 		worker.process(message)
 
-		count, _ = redis.Int(conn.Do("get", "prod:stat:processed"))
-		dayCount, _ = redis.Int(conn.Do("get", "prod:stat:processed:"+time.Now().UTC().Format(layout)))
+		count, _ = Config.Cluster.Cmd("get", "prod:stat:processed").Int()
+		dayCount, _ = Config.Cluster.Cmd("get", "prod:stat:processed:"+time.Now().UTC().Format(layout)).Int()
 
 		c.Expect(count, Equals, 1)
 		c.Expect(dayCount, Equals, 1)
@@ -48,19 +44,16 @@ func MiddlewareStatsSpec(c gospec.Context) {
 		worker := newWorker(manager)
 
 		c.Specify("increments failed stats", func() {
-			conn := Config.Pool.Get()
-			defer conn.Close()
-
-			count, _ := redis.Int(conn.Do("get", "prod:stat:failed"))
-			dayCount, _ := redis.Int(conn.Do("get", "prod:stat:failed:"+time.Now().UTC().Format(layout)))
+			count, _ := Config.Cluster.Cmd("get", "prod:stat:failed").Int()
+			dayCount, _ := Config.Cluster.Cmd("get", "prod:stat:failed:"+time.Now().UTC().Format(layout)).Int()
 
 			c.Expect(count, Equals, 0)
 			c.Expect(dayCount, Equals, 0)
 
 			worker.process(message)
 
-			count, _ = redis.Int(conn.Do("get", "prod:stat:failed"))
-			dayCount, _ = redis.Int(conn.Do("get", "prod:stat:failed:"+time.Now().UTC().Format(layout)))
+			count, _ = Config.Cluster.Cmd("get", "prod:stat:failed").Int()
+			dayCount, _ = Config.Cluster.Cmd("get", "prod:stat:failed:"+time.Now().UTC().Format(layout)).Int()
 
 			c.Expect(count, Equals, 1)
 			c.Expect(dayCount, Equals, 1)

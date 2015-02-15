@@ -3,8 +3,6 @@ package workers
 import (
 	"strings"
 	"time"
-
-	"github.com/garyburd/redigo/redis"
 )
 
 const (
@@ -30,14 +28,12 @@ func (s *scheduled) poll(continuing bool) {
 		return
 	}
 
-	conn := Config.Pool.Get()
-
 	now := time.Now().Unix()
 
 	for _, key := range s.keys {
 		key = Config.Namespace + key
 		for {
-			messages, _ := redis.Strings(conn.Do("zrangebyscore", key, "-inf", now, "limit", 0, 1))
+			messages, _ := Config.Cluster.Cmd("zrangebyscore", key, "-inf", now, "limit", 0, 1).List()
 
 			if len(messages) == 0 {
 				break
@@ -45,15 +41,14 @@ func (s *scheduled) poll(continuing bool) {
 
 			message, _ := NewMsg(messages[0])
 
-			if removed, _ := redis.Bool(conn.Do("zrem", key, messages[0])); removed {
+			if removed, _ := Config.Cluster.Cmd("zrem", key, messages[0]).Bool(); removed {
 				queue, _ := message.Get("queue").String()
 				queue = strings.TrimPrefix(queue, Config.Namespace)
-				conn.Do("lpush", Config.Namespace+"queue:"+queue, message.ToJson())
+				Config.Cluster.Cmd("lpush", Config.Namespace+"queue:"+queue, message.ToJson())
 			}
 		}
 	}
 
-	conn.Close()
 	if continuing {
 		time.Sleep(POLL_INTERVAL * time.Second)
 		s.poll(true)

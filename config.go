@@ -1,7 +1,7 @@
 package workers
 
 import (
-	"github.com/garyburd/redigo/redis"
+	"github.com/fzzy/radix/extra/cluster"
 	"strconv"
 	"time"
 )
@@ -9,7 +9,7 @@ import (
 type config struct {
 	processId string
 	Namespace string
-	Pool      *redis.Pool
+	Cluster   *cluster.Cluster
 	Fetch     func(queue string) Fetcher
 }
 
@@ -17,6 +17,8 @@ var Config *config
 
 func Configure(options map[string]string) {
 	var poolSize int
+	var timeout int
+	var reset int
 	var namespace string
 
 	if options["server"] == "" {
@@ -31,39 +33,35 @@ func Configure(options map[string]string) {
 	if options["namespace"] != "" {
 		namespace = options["namespace"] + ":"
 	}
+	if options["timeout"] == "" {
+		options["timeout"] = "240"
+	}
+	if options["reset"] == "" {
+		options["reset"] = "10"
+	}
 
 	poolSize, _ = strconv.Atoi(options["pool"])
+	timeout, _ = strconv.Atoi(options["timeout"])
+	reset, _ = strconv.Atoi(options["reset"])
+
+	clusterOpts := new(cluster.Opts)
+	clusterOpts.Addr = options["server"]
+	clusterOpts.PoolSize = poolSize
+	clusterOpts.Timeout = time.Duration(timeout) * time.Second
+	clusterOpts.ResetThrottle = time.Duration(reset) * time.Second
+
+	cluster, err := cluster.NewClusterWithOpts(*clusterOpts)
+	if err != nil {
+		panic("Cannot connect to a Redis Cluster")
+	}
+
+	// TODO: Add support for PASSWORD
+	// TODO: Add support for SELECT
 
 	Config = &config{
 		options["process"],
 		namespace,
-		&redis.Pool{
-			MaxIdle:     poolSize,
-			IdleTimeout: 240 * time.Second,
-			Dial: func() (redis.Conn, error) {
-				c, err := redis.Dial("tcp", options["server"])
-				if err != nil {
-					return nil, err
-				}
-				if options["password"] != "" {
-					if _, err := c.Do("AUTH", options["password"]); err != nil {
-						c.Close()
-						return nil, err
-					}
-				}
-				if options["database"] != "" {
-					if _, err := c.Do("SELECT", options["database"]); err != nil {
-						c.Close()
-						return nil, err
-					}
-				}
-				return c, err
-			},
-			TestOnBorrow: func(c redis.Conn, t time.Time) error {
-				_, err := c.Do("PING")
-				return err
-			},
-		},
+		cluster,
 		func(queue string) Fetcher {
 			return NewFetch(queue, make(chan *Msg), make(chan bool))
 		},

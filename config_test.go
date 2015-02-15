@@ -18,23 +18,11 @@ func ConfigSpec(c gospec.Context) {
 		return
 	}
 
-	c.Specify("sets redis pool size which defaults to 1", func() {
-		c.Expect(Config.Pool.MaxIdle, Equals, 1)
-
-		Configure(map[string]string{
-			"server":  "localhost:6379",
-			"process": "1",
-			"pool":    "20",
-		})
-
-		c.Expect(Config.Pool.MaxIdle, Equals, 20)
-	})
-
 	c.Specify("can specify custom process", func() {
 		c.Expect(Config.processId, Equals, "1")
 
 		Configure(map[string]string{
-			"server":  "localhost:6379",
+			"server":  "localhost:7000",
 			"process": "2",
 		})
 
@@ -51,7 +39,7 @@ func ConfigSpec(c gospec.Context) {
 
 	c.Specify("requires a process parameter", func() {
 		err := recoverOnPanic(func() {
-			Configure(map[string]string{"server": "localhost:6379"})
+			Configure(map[string]string{"server": "localhost:7000"})
 		})
 
 		c.Expect(err, Equals, "Configure requires a 'process' option, which uniquely identifies this instance")
@@ -61,7 +49,7 @@ func ConfigSpec(c gospec.Context) {
 		c.Expect(Config.Namespace, Equals, "")
 
 		Configure(map[string]string{
-			"server":    "localhost:6379",
+			"server":    "localhost:7000",
 			"process":   "1",
 			"namespace": "prod",
 		})

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
-	"github.com/garyburd/redigo/redis"
 )
 
 func ManagerSpec(c gospec.Context) {
@@ -20,7 +19,7 @@ func ManagerSpec(c gospec.Context) {
 	c.Specify("newManager", func() {
 		c.Specify("sets queue with namespace", func() {
 			manager := newManager("myqueue", testJob, 10)
-			c.Expect(manager.queue, Equals, "prod:queue:myqueue")
+			c.Expect(manager.queue, Equals, "prod:queue:{myqueue}")
 		})
 
 		c.Specify("sets job function", func() {
@@ -36,8 +35,6 @@ func ManagerSpec(c gospec.Context) {
 	})
 
 	c.Specify("manage", func() {
-		conn := Config.Pool.Get()
-		defer conn.Close()
 
 		message, _ := NewMsg("{\"foo\":\"bar\",\"args\":[\"foo\",\"bar\"]}")
 		message2, _ := NewMsg("{\"foo\":\"bar2\",\"args\":[\"foo\",\"bar2\"]}")
@@ -45,8 +42,8 @@ func ManagerSpec(c gospec.Context) {
 		c.Specify("coordinates processing of queue messages", func() {
 			manager := newManager("manager1", testJob, 10)
 
-			conn.Do("lpush", "prod:queue:manager1", message.ToJson())
-			conn.Do("lpush", "prod:queue:manager1", message2.ToJson())
+			Config.Cluster.Cmd("lpush", "prod:queue:{manager1}", message.ToJson())
+			Config.Cluster.Cmd("lpush", "prod:queue:{manager1}", message2.ToJson())
 
 			manager.start()
 
@@ -55,7 +52,7 @@ func ManagerSpec(c gospec.Context) {
 
 			manager.quit()
 
-			len, _ := redis.Int(conn.Do("llen", "prod:queue:manager1"))
+			len, _ := Config.Cluster.Cmd("llen", "prod:queue:{manager1}").Int()
 			c.Expect(len, Equals, 0)
 		})
 
@@ -65,12 +62,12 @@ func ManagerSpec(c gospec.Context) {
 
 			manager.prepare()
 
-			conn.Do("lpush", "prod:queue:manager2", message)
-			conn.Do("lpush", "prod:queue:manager2", message2)
+			Config.Cluster.Cmd("lpush", "prod:queue:{manager2}", message)
+			Config.Cluster.Cmd("lpush", "prod:queue:{manager2}", message2)
 
 			manager.quit()
 
-			len, _ := redis.Int(conn.Do("llen", "prod:queue:manager2"))
+			len, _ := Config.Cluster.Cmd("llen", "prod:queue:{manager2}").Int()
 			c.Expect(len, Equals, 2)
 		})
 	})

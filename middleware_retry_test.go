@@ -3,7 +3,6 @@ package workers
 import (
 	"github.com/customerio/gospec"
 	. "github.com/customerio/gospec"
-	"github.com/garyburd/redigo/redis"
 	"time"
 )
 
@@ -30,10 +29,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.Pool.Get()
-		defer conn.Close()
-
-		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
+		retries, _ := Config.Cluster.Cmd("zrange", "prod:"+RETRY_KEY, 0, 1).List()
 		c.Expect(retries[0], Equals, message.ToJson())
 	})
 
@@ -44,10 +40,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.Pool.Get()
-		defer conn.Close()
-
-		count, _ := redis.Int(conn.Do("zcard", "prod:"+RETRY_KEY))
+		count, _ := Config.Cluster.Cmd("zcard", "prod:"+RETRY_KEY).Int()
 		c.Expect(count, Equals, 0)
 	})
 
@@ -58,10 +51,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.Pool.Get()
-		defer conn.Close()
-
-		count, _ := redis.Int(conn.Do("zcard", "prod:"+RETRY_KEY))
+		count, _ := Config.Cluster.Cmd("zcard", "prod:"+RETRY_KEY).Int()
 		c.Expect(count, Equals, 0)
 	})
 
@@ -72,10 +62,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.Pool.Get()
-		defer conn.Close()
-
-		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
+		retries, _ := Config.Cluster.Cmd("zrange", "prod:"+RETRY_KEY, 0, 1).List()
 		c.Expect(retries[0], Equals, message.ToJson())
 	})
 
@@ -86,10 +73,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.Pool.Get()
-		defer conn.Close()
-
-		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
+		retries, _ := Config.Cluster.Cmd("zrange", "prod:"+RETRY_KEY, 0, 1).List()
 		message, _ = NewMsg(retries[0])
 
 		queue, _ := message.Get("queue").String()
@@ -99,7 +83,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		error_backtrace, _ := message.Get("error_backtrace").String()
 		failed_at, _ := message.Get("failed_at").String()
 
-		c.Expect(queue, Equals, "myqueue")
+		c.Expect(queue, Equals, "{myqueue}")
 		c.Expect(error_message, Equals, "AHHHH")
 		c.Expect(error_class, Equals, "")
 		c.Expect(retry_count, Equals, 0)
@@ -114,10 +98,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.Pool.Get()
-		defer conn.Close()
-
-		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
+		retries, _ := Config.Cluster.Cmd("zrange", "prod:"+RETRY_KEY, 0, 1).List()
 		message, _ = NewMsg(retries[0])
 
 		queue, _ := message.Get("queue").String()
@@ -126,7 +107,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		failed_at, _ := message.Get("failed_at").String()
 		retried_at, _ := message.Get("retried_at").String()
 
-		c.Expect(queue, Equals, "myqueue")
+		c.Expect(queue, Equals, "{myqueue}")
 		c.Expect(error_message, Equals, "AHHHH")
 		c.Expect(retry_count, Equals, 11)
 		c.Expect(failed_at, Equals, "2013-07-20 14:03:42 UTC")
@@ -140,10 +121,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.Pool.Get()
-		defer conn.Close()
-
-		retries, _ := redis.Strings(conn.Do("zrange", "prod:"+RETRY_KEY, 0, 1))
+		retries, _ := Config.Cluster.Cmd("zrange", "prod:"+RETRY_KEY, 0, 1).List()
 		message, _ = NewMsg(retries[0])
 
 		queue, _ := message.Get("queue").String()
@@ -152,7 +130,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 		failed_at, _ := message.Get("failed_at").String()
 		retried_at, _ := message.Get("retried_at").String()
 
-		c.Expect(queue, Equals, "myqueue")
+		c.Expect(queue, Equals, "{myqueue}")
 		c.Expect(error_message, Equals, "AHHHH")
 		c.Expect(retry_count, Equals, 9)
 		c.Expect(failed_at, Equals, "2013-07-20 14:03:42 UTC")
@@ -166,10 +144,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.Pool.Get()
-		defer conn.Close()
-
-		count, _ := redis.Int(conn.Do("zcard", "prod:"+RETRY_KEY))
+		count, _ := Config.Cluster.Cmd("zcard", "prod:"+RETRY_KEY).Int()
 		c.Expect(count, Equals, 0)
 	})
 
@@ -180,10 +155,7 @@ func MiddlewareRetrySpec(c gospec.Context) {
 			worker.process(message)
 		})
 
-		conn := Config.Pool.Get()
-		defer conn.Close()
-
-		count, _ := redis.Int(conn.Do("zcard", "prod:"+RETRY_KEY))
+		count, _ := Config.Cluster.Cmd("zcard", "prod:"+RETRY_KEY).Int()
 		c.Expect(count, Equals, 0)
 	})
 

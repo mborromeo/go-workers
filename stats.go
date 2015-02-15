@@ -41,24 +41,8 @@ func Stats(w http.ResponseWriter, req *http.Request) {
 		jobs,
 	}
 
-	conn := Config.Pool.Get()
-	defer conn.Close()
-
-	conn.Send("multi")
-	conn.Send("get", Config.Namespace+"stat:processed")
-	conn.Send("get", Config.Namespace+"stat:failed")
-	r, err := conn.Do("exec")
-
-	if err != nil {
-		Logger.Println("couldn't retrieve stats:", err)
-	}
-
-	results := r.([]interface{})
-
-	if len(results) == 2 {
-		stats.Processed, _ = strconv.Atoi(string(results[0].([]byte)))
-		stats.Failed, _ = strconv.Atoi(string(results[1].([]byte)))
-	}
+	stats.Processed, _ = strconv.Atoi(Config.Cluster.Cmd("get", Config.Namespace+"stat:processed").String())
+	stats.Failed, _ = strconv.Atoi(Config.Cluster.Cmd("get", Config.Namespace+"stat:failed").String())
 
 	body, _ := json.MarshalIndent(stats, "", "  ")
 	fmt.Fprintln(w, string(body))

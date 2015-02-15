@@ -38,9 +38,7 @@ func Enqueue(queue, class string, args interface{}) (string, error) {
 }
 
 func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptions) (string, error) {
-	conn := Config.Pool.Get()
-	defer conn.Close()
-
+	queue = "{"+queue+"}"
 	data := EnqueueData{
 		Queue:          queue,
 		Class:          class,
@@ -54,13 +52,13 @@ func EnqueueWithOptions(queue, class string, args interface{}, opts EnqueueOptio
 		return "", err
 	}
 
-	_, err = conn.Do("sadd", Config.Namespace+"queues", queue)
-	if err != nil {
+	r := Config.Cluster.Cmd("sadd", Config.Namespace+"queues", queue)
+	if r.Err != nil {
 		return "", err
 	}
 	queue = Config.Namespace + "queue:" + queue
-	_, err = conn.Do("rpush", queue, bytes)
-	if err != nil {
+	r = Config.Cluster.Cmd("rpush", queue, bytes)
+	if r.Err != nil {
 		return "", err
 	}
 
