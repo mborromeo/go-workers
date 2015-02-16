@@ -68,7 +68,6 @@ func (f *fetch) Fetch() {
 				if message.Type == redis.NilReply {
 					// If redis returns null, the queue is empty. Just ignore the error.
 				} else {
-					fmt.Println(message.String())
 					c <- message.String()
 				}
 			})()
